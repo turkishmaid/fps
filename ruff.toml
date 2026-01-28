@@ -22,6 +22,9 @@ ignore = [
   "TD003", # missigng issue link for todo
   "TD004", # missing colon in todo
   "PT009", # assert instead of unittes.assert*()
+  # for this project only, don't refit into template
+  "T201", # use of print
+  "S311", # use of random for security/cryptography
 ]
 select = ["ALL", "TD006", "TD007", "FIX"]
 
