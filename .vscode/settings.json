@@ -1,0 +1,37 @@
+{
+    "chat.agent.enabled": true,
+    "github.copilot.nextEditSuggestions.enabled": true,
+    "makefile.configureOnOpen": false,
+    "python.testing.pytestEnabled": false,
+    "python.testing.unittestEnabled": true,
+    "python.testing.unittestArgs": [
+        "-v",
+        // "-s",
+        // "./tests",
+        "-p",
+        "test_*.py"
+    ],
+    "python.analysis.typeCheckingMode": "standard",
+    "editor.defaultFoldingRangeProvider": "charliermarsh.ruff",
+    "editor.defaultFormatter": "charliermarsh.ruff",
+    "terminal.integrated.scrollback": 5000,
+    "terminal.integrated.shellIntegration.enabled": false,
+    "files.autoSave": "onFocusChange",
+    "todo-tree.tree.scanMode": "workspace only",
+    //
+    // without the next entry, Pylance will not find the anita package
+    // clone anita repo in sibling directory next to repo-root
+    //   parent/
+    //     ├── repo-root/   (this repo)
+    //     └── anita/       (dependency repo)
+    "python.analysis.extraPaths": [
+        "../anita",
+        "${workspaceFolder}"
+    ],
+    "[json]": {
+        "editor.defaultFormatter": "vscode.json-language-features"
+    },
+    "[jsonc]": {
+        "editor.defaultFormatter": "vscode.json-language-features"
+    }
+}

@@ -1,0 +1,93 @@
+
+[project]
+name = "python-template"
+version = "0.1.0"  # zerover
+description = "wtf is going on here?"
+readme = "README.md"
+requires-python = ">=3.13"
+dependencies = [
+    "anita",
+    # add stöffche here
+    # "airium",
+    # "beautifulsoup4",
+    # "click",
+    # "concurrent-log-handler",
+    # "deprecated",
+    # "docopt-ng",
+    # "flask>=3",
+    # "ipykernel",
+    # "ipywidgets",
+    # "jamesql",
+    # "jsonpath-ng",
+    "lorem-text",
+    # "matplotlib",
+    # "pandas",
+    # "pprintpp",
+    # "pyexiftool",
+    # "pyfiglet",
+    # "pymongo",
+    # "pyopenssl",
+    # "python-dateutil",
+    # "pytz",
+    # "pyyaml",
+    # "requests",
+    # "responses",
+    # "rich",
+    # "ruff",
+    # "scipy",
+    # "tomlkit",
+    # "tweepy",
+    # "wordcloud",
+    # "yagmail",
+]
+
+[dependency-groups]
+dev = [
+    # "debugpy",
+    "pytest",
+    "ruff",
+]
+tk-gui-group = [
+    "PySide6",
+    "Pillow",
+    "python-vlc"
+]
+tui-group = [
+    "textual",
+    "textual-dev",
+    "textual-image",
+]
+tinydb-group = [
+    "BetterJSONStorage",
+    "tinydb",
+    "orjson",
+]
+# Google APIs, z.B. für das Youtube Data API
+google-api-group = [
+    "google-api-python-client",
+    "google-auth-oauthlib",
+    "google-auth-httplib2",
+]
+
+[tool.uv]
+# Hier definierst du, was standardmäßig dabei sein soll
+default-groups = ["tui-group"]
+
+[tool.uv.sources]
+anita = { path = "../anita", editable = true }
+# netscape-bookmarks-file-parser = { git = "https://github.com/FlyingWolFox/Netscape-Bookmarks-File-Parser.git" }
+# ttkbootstrap = { git = "https://github.com/israel-dryer/ttkbootstrap.git" }
+
+[tool.pytest.ini_options]
+pythonpath = ["src"]
+
+[project.scripts]
+power-duebel = "path.to.script:main"
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/fun"]
+

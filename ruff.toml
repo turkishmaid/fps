@@ -1,0 +1,30 @@
+# https://docs.astral.sh/ruff/configuration/
+
+exclude = ["adhoc.*", "local/"] 
+line-length = 119 
+
+
+[lint]
+ignore = [
+  "I001", # unsorted imports
+  "S101", # use of assert
+  "G004", # f-string in logging
+## change this to non-exist "ME102" and you get a completely unspecific Ruff obstacle w/o any message
+## https://github.com/astral-sh/ruff/issues/13022 FIXED :3
+  "EM102", # f-string in exception
+  "D105", # missing docstring in magic method
+  "D202", # no blank lines allowed after function docstring
+  "D204", # blank line after class docstring
+  "D205", # blank line after summary in docstrings
+  "D413", # missing blank line after last section in docstring
+  "TRY003", # Avoid specifying long messages outside the exception class
+  "TD002", # missigng author in todo
+  "TD003", # missigng issue link for todo
+  "TD004", # missing colon in todo
+  "PT009", # assert instead of unittes.assert*()
+]
+select = ["ALL", "TD006", "TD007", "FIX"]
+
+[lint.per-file-ignores]
+# surpress unused import
+"__init__.py" = ["F401"]
