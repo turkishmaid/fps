@@ -1,12 +1,13 @@
 
 [project]
-name = "python-template"
-version = "0.1.0"  # zerover
-description = "wtf is going on here?"
+name = "fps"
+version = "0.0.1"  # zerover
+description = "ein Versuch zur Framerate im Terminal"
 readme = "README.md"
 requires-python = ">=3.13"
 dependencies = [
     "anita",
+    "blessed",
     # add stöffche here
     # "airium",
     # "beautifulsoup4",
@@ -19,7 +20,7 @@ dependencies = [
     # "ipywidgets",
     # "jamesql",
     # "jsonpath-ng",
-    "lorem-text",
+    # "lorem-text",
     # "matplotlib",
     # "pandas",
     # "pprintpp",
@@ -47,31 +48,31 @@ dev = [
     "pytest",
     "ruff",
 ]
-tk-gui-group = [
-    "PySide6",
-    "Pillow",
-    "python-vlc"
-]
-tui-group = [
-    "textual",
-    "textual-dev",
-    "textual-image",
-]
-tinydb-group = [
-    "BetterJSONStorage",
-    "tinydb",
-    "orjson",
-]
-# Google APIs, z.B. für das Youtube Data API
-google-api-group = [
-    "google-api-python-client",
-    "google-auth-oauthlib",
-    "google-auth-httplib2",
-]
+# tk-gui-group = [
+#     "PySide6",
+#     "Pillow",
+#     "python-vlc"
+# ]
+# tui-group = [
+#     "textual",
+#     "textual-dev",
+#     "textual-image",
+# ]
+# tinydb-group = [
+#     "BetterJSONStorage",
+#     "tinydb",
+#     "orjson",
+# ]
+# # Google APIs, z.B. für das Youtube Data API
+# google-api-group = [
+#     "google-api-python-client",
+#     "google-auth-oauthlib",
+#     "google-auth-httplib2",
+# ]
 
-[tool.uv]
-# Hier definierst du, was standardmäßig dabei sein soll
-default-groups = ["tui-group"]
+# [tool.uv]
+# # Hier definierst du, was standardmäßig dabei sein soll
+# default-groups = ["tui-group"]
 
 [tool.uv.sources]
 anita = { path = "../anita", editable = true }
@@ -81,8 +82,8 @@ anita = { path = "../anita", editable = true }
 [tool.pytest.ini_options]
 pythonpath = ["src"]
 
-[project.scripts]
-power-duebel = "path.to.script:main"
+# [project.scripts]
+# power-duebel = "path.to.script:main"
 
 [build-system]
 requires = ["hatchling"]
