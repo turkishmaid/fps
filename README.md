@@ -16,6 +16,9 @@ options:
   -h, --help     show this help message and exit
 ```
 
+Inspired by [TUIs are small game Engines???? What the F**k](https://www.youtube.com/watch?v=E095t3yq9gk) (ThePrimeagenHighlights)
+
+
 
 &nbsp;
 
