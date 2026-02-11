@@ -7,16 +7,19 @@ from dataclasses import dataclass
 
 from blessed import Terminal
 from typing import TYPE_CHECKING
-
 if TYPE_CHECKING:
     from blessed.keyboard import Keystroke
+
+# from .moving import char__insert
 
 term = Terminal()
 
 INSERT = "INSERT"
 COMMAND = "COMMAND"
+MODES = (INSERT, COMMAND)
 
 DIM = term.color_hex("#888888")
+BOLD = term.bright_cyan
 ALERT = term.color_hex("#880000")
 SUCCESS = term.color_hex("#008800")
 
@@ -58,6 +61,7 @@ class Editor:
 
     @property
     def max_y(self) -> int:
+        """Return the maximum y valid for cursor position."""
         return term.height - 2
 
     def set_mode(self, mode: str) -> None:
@@ -122,7 +126,7 @@ class KeyHandlerRegistry:
     _instance = None
     _initialized = False
 
-    def __new__(cls) -> "KeyHandlerRegistry":
+    def __new__(cls) -> KeyHandlerRegistry:
         """Create or return the singleton instance."""
         if cls._instance is None:
             cls._instance = super().__new__(cls)
@@ -131,24 +135,46 @@ class KeyHandlerRegistry:
     def __init__(self) -> None:
         """Initialize the singleton instance if not already done."""
         if not self._initialized:
-            self.handlers: dict[str, Callable[[Editor], None]] = {}
+            self.handlers: dict[str, dict[str | None, Callable[[Editor], None]]] = {}
             self._initialized = True
 
     def register(self, func: Callable[[Editor], None]) -> Callable[[Editor], None]:
         """Register a function as a key handler."""
-        self.handlers[func.__name__.upper()] = func
-        return func
+        key_name = func.__name__.upper()
+        mode = None
 
-    def get_handler(self, key_name: str) -> Callable[[Editor], None] | None:
-        """Get the handler for a given key name."""
-        return self.handlers.get(key_name, None)
+        if "__" in key_name:
+             key_name, mode = key_name.rsplit("__", 1)
+
+        if key_name not in self.handlers:
+            self.handlers[key_name] = {}
+        self.handlers[key_name][mode] = func
+        return func
 
     def execute_handler(self, key_name: str, editor: Editor) -> bool:
         """Execute the handler for a given key name if it exists."""
-        if handler := self.handlers.get(key_name, None):
-            handler(editor)
-            return True
+        if mode_dict := self.handlers.get(key_name, None):
+            # precedence: mode-specific handler
+            if handler := mode_dict.get(editor.mode):
+                handler(editor)
+                return True
+            # fallback to global handler if no mode-specific handler found
+            if handler := mode_dict.get(None):
+                handler(editor)
+                return True
         return False
+
+    def show_keybindings(self) -> None:
+        """Show the registered keybindings."""
+        for key in sorted(self.handlers.keys()):
+            if None in self.handlers[key]:
+                print(f"{DIM}{key}:{term.normal} {BOLD}{self.handlers[key][None].__name__}{term.normal}")
+            else:
+                print(f"{DIM}{key}:{term.normal}")
+            for mode, func in self.handlers[key].items():
+                if mode is not None:
+                    print(f"  {DIM}{mode}:{term.normal} {func.__name__}")
+        input("Press Enter to start the editor...")
 
 
 def key_handler(func: Callable[[Editor], None]) -> Callable[[Editor], None]:
@@ -200,6 +226,8 @@ def load() -> LoadResult:
 def vi() -> None:
     """Run main editor loop."""
 
+    KeyHandlerRegistry().show_keybindings()
+
     lr = load()
 
     with term.fullscreen(), term.raw():
@@ -224,17 +252,11 @@ def vi() -> None:
 
             if key.is_sequence:
                 e.alert(key.name)  # Show the key name as a quick message
-
-                # if key.name == "KEY_BACKSPACE":
-                #     # move cursor left and shift all further characters left
-                #     # ???
-                #     Editor.echo(term.move_yx(e.y, e.x - 1) + " " + term.move_yx(e.y, e.x - 1))
-                #     e.x = max(0, e.x - 1)
-                # elif key.name == "KEY_ENTER":
-                #     Editor.echo(term.clear_eol())  # Move to the next line on Enter
-                #     e.y = min(term.height - 1, e.y + 1)
-                #     e.x = 0
-                # else:
-                #     Editor.echo(key.name)  # Print the key name directly
             else:
-                char(e, key)
+                char(e, key)  # Handle normal character input
+
+                # # TODO need to refactor to avoid circular import
+                # if e.mode == INSERT:
+                #     char__insert(e, key)
+                # else:
+                #     e.alert(f"'{key}'")  # Show the character as a quick message
