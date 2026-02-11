@@ -6,6 +6,7 @@ line-length = 119
 
 [lint]
 ignore = [
+  "BLE001", # Do not catch blind exception: `Exception`
   "I001", # unsorted imports
   "S101", # use of assert
   "G004", # f-string in logging

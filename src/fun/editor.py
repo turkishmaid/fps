@@ -1,27 +1,17 @@
+"""Editor state management and key handler registry."""
+
 from __future__ import annotations
-from collections.abc import Callable
 from time import time
-import sys
-from pathlib import Path
-from dataclasses import dataclass
+from typing import Self, TYPE_CHECKING
 
 from blessed import Terminal
-from typing import TYPE_CHECKING
-if TYPE_CHECKING:
-    from blessed.keyboard import Keystroke
 
-# from .moving import char__insert
+from .config import Config, Mode
+
+if TYPE_CHECKING:
+    from collections.abc import Callable
 
 term = Terminal()
-
-INSERT = "INSERT"
-COMMAND = "COMMAND"
-MODES = (INSERT, COMMAND)
-
-DIM = term.color_hex("#888888")
-BOLD = term.bright_cyan
-ALERT = term.color_hex("#880000")
-SUCCESS = term.color_hex("#008800")
 
 
 class Editor:
@@ -29,7 +19,8 @@ class Editor:
 
     def __init__(self) -> None:
         """Initialize the editor state."""
-        self.mode: str = INSERT
+
+        self.mode: Mode = Mode.insert
         self.command: str = ""
 
         # position relative to the visible area
@@ -64,10 +55,10 @@ class Editor:
         """Return the maximum y valid for cursor position."""
         return term.height - 2
 
-    def set_mode(self, mode: str) -> None:
+    def set_mode(self, mode: Mode) -> None:
         """Set the current mode, and show it bottom left."""
         self.mode = mode
-        self.echo(term.move_yx(term.height - 1, 0) + f"{DIM}-- {mode} --    {term.normal}")
+        self.echo(term.move_yx(term.height - 1, 0) + f"{Config().dim}-- {mode.value} --    {term.normal}")
         self.set_cursor()
 
     def echo_line(self, y: int = -1) -> None:
@@ -75,9 +66,12 @@ class Editor:
         if y == -1:
             y = self.y
         y_eff = y + self.y_offset
-        self.echo(f"{term.move_yx(y, 0)}{DIM}{y_eff + 1:3d} | {term.normal}" + self.lines[y_eff] + term.clear_eol())
+        self.echo(
+            f"{term.move_yx(y, 0)}{Config().dim}{y_eff + 1:3d} | {term.normal}" + self.lines[y_eff] + term.clear_eol(),
+        )
 
     def echo_lines_from(self, y: int) -> None:
+        """Show all lines from the given y to the end of the edit area."""
         for y_ in range(y, self.max_y + 1):
             if y_ + self.y_offset >= len(self.lines):
                 self.echo(term.move_yx(y_, 0) + term.clear_eol())
@@ -95,7 +89,7 @@ class Editor:
         self.x = min(self.x, len(line))
         self.echo(term.move_yx(self.y, self.x + self.line_start))
 
-    def alert(self, message: str | None, color: str = ALERT) -> None:
+    def alert(self, message: str | None, color: str = Config().alert) -> None:
         """Show a quick message at the bottom of the terminal, col 20."""
         if message is None:
             return
@@ -117,16 +111,13 @@ class Editor:
             self.alert_length = 0
 
 
-key_handler_map: dict[str, Callable[[Editor], None]] = {}
-
-
 class KeyHandlerRegistry:
     """Registry for key handlers."""
 
     _instance = None
     _initialized = False
 
-    def __new__(cls) -> KeyHandlerRegistry:
+    def __new__(cls) -> Self:
         """Create or return the singleton instance."""
         if cls._instance is None:
             cls._instance = super().__new__(cls)
@@ -144,7 +135,7 @@ class KeyHandlerRegistry:
         mode = None
 
         if "__" in key_name:
-             key_name, mode = key_name.rsplit("__", 1)
+            key_name, mode = key_name.rsplit("__", 1)
 
         if key_name not in self.handlers:
             self.handlers[key_name] = {}
@@ -155,7 +146,7 @@ class KeyHandlerRegistry:
         """Execute the handler for a given key name if it exists."""
         if mode_dict := self.handlers.get(key_name, None):
             # precedence: mode-specific handler
-            if handler := mode_dict.get(editor.mode):
+            if handler := mode_dict.get(editor.mode.value, None):
                 handler(editor)
                 return True
             # fallback to global handler if no mode-specific handler found
@@ -168,12 +159,15 @@ class KeyHandlerRegistry:
         """Show the registered keybindings."""
         for key in sorted(self.handlers.keys()):
             if None in self.handlers[key]:
-                print(f"{DIM}{key}:{term.normal} {BOLD}{self.handlers[key][None].__name__}{term.normal}")
+                print(
+                    f"{Config().dim}{key}:{term.normal}",
+                    f"{Config().bold}{self.handlers[key][None].__name__}{term.normal}",
+                )
             else:
-                print(f"{DIM}{key}:{term.normal}")
+                print(f"{Config().dim}{key}:{term.normal}")
             for mode, func in self.handlers[key].items():
                 if mode is not None:
-                    print(f"  {DIM}{mode}:{term.normal} {func.__name__}")
+                    print(f"  {Config().dim}{mode}:{term.normal} {func.__name__}")
         input("Press Enter to start the editor...")
 
 
@@ -181,82 +175,3 @@ def key_handler(func: Callable[[Editor], None]) -> Callable[[Editor], None]:
     """Register a function in the key_handler_map with its name in uppercase as key."""
     KeyHandlerRegistry().register(func)
     return func
-
-
-def char(e: Editor, key: Keystroke) -> None:
-    """Handle normal character input."""
-    y_index = e.y + e.y_offset
-    line = e.lines[y_index]
-    if e.mode == INSERT:
-        # insert the character at the current position
-        e.lines[y_index] = line[: e.x] + key + line[e.x :]
-        e.x += 1
-        e.echo_line()
-        e.set_cursor()
-    else:
-        e.beep()  # Not in insert mode, bell sound
-
-
-@dataclass
-class LoadResult:
-    success: bool
-    message: str
-    content: list[str]
-
-
-def load() -> LoadResult:
-    if len(sys.argv) > 1:  # noqa: SIM102
-        if sys.argv[1].startswith("--"):
-            if sys.argv[1] == "--debug":
-                print(KeyHandlerRegistry().handlers)
-                input("Press Enter to start the editor...")
-        else:
-            filename = sys.argv[1]
-            here = Path.cwd()
-            file_path = here / filename
-            try:
-                with file_path.open("r") as f:
-                    content = [line.rstrip("\n") for line in f]
-                return LoadResult(success=True, message=filename, content=content)
-            except Exception as ex:
-                return LoadResult(success=False, message=f"Error opening file: {ex}", content=[])
-    return LoadResult(success=True, message="new file", content=[""])
-
-
-def vi() -> None:
-    """Run main editor loop."""
-
-    KeyHandlerRegistry().show_keybindings()
-
-    lr = load()
-
-    with term.fullscreen(), term.raw():
-        e = Editor()
-        e.alert(lr.message, color=SUCCESS if lr.success else ALERT)
-        e.lines = lr.content
-
-        e.set_mode(INSERT)
-        e.echo_lines_from(0)
-        e.set_cursor()
-        while True:
-            key = term.inkey(timeout=0.35)
-            if key is None or key == "":
-                continue  # No key pressed, continue the loop
-
-            # all thinggs KEY_...
-            try:
-                if key.name and KeyHandlerRegistry().execute_handler(key.name, e):
-                    continue
-            except KeyboardInterrupt:
-                break  # Exit on Ctrl+C
-
-            if key.is_sequence:
-                e.alert(key.name)  # Show the key name as a quick message
-            else:
-                char(e, key)  # Handle normal character input
-
-                # # TODO need to refactor to avoid circular import
-                # if e.mode == INSERT:
-                #     char__insert(e, key)
-                # else:
-                #     e.alert(f"'{key}'")  # Show the character as a quick message

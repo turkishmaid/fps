@@ -1,18 +1,16 @@
-"""Handle cursor movement and related key events in the editor."""
+"""Handle key events in insert mode."""
 
-from typing import TYPE_CHECKING
+from blessed.keyboard import Keystroke
 
-if TYPE_CHECKING:
-    from blessed.keyboard import Keystroke
-
-from fun.editor import Editor, INSERT, COMMAND, key_handler
+from .config import Mode
+from .editor import Editor, key_handler
 
 
 def char__insert(e: Editor, key: Keystroke) -> None:
     """Handle normal character input."""
     y_index = e.y + e.y_offset
     line = e.lines[y_index]
-    if e.mode == INSERT:
+    if e.mode == Mode.insert:
         # insert the character at the current position
         e.lines[y_index] = line[: e.x] + key + line[e.x :]
         e.x += 1
@@ -22,11 +20,8 @@ def char__insert(e: Editor, key: Keystroke) -> None:
         e.beep()  # Not in insert mode, bell sound
 
 
-
-
-
 @key_handler
-def key_ctrl_c(e: Editor) -> None:
+def key_ctrl_c(e: Editor) -> None:  # noqa: ARG001
     """Handle Ctrl+C key press."""
     raise KeyboardInterrupt
 
@@ -49,7 +44,7 @@ def key_down(e: Editor) -> None:
         e.beep()  # no scroll yet
         return
     e.y += 1
-    if e.mode == INSERT and e.y + e.y_offset == len(e.lines):
+    if e.mode == Mode.insert and e.y + e.y_offset == len(e.lines):
         # extend line buffer
         e.lines.append("")
         e.echo_line()
@@ -155,4 +150,5 @@ def key_enter(e: Editor) -> None:
 @key_handler
 def key_escape__insert(e: Editor) -> None:
     """Escape in insert mode: Switch to command mode."""
-    e.set_mode(COMMAND)
+    e.set_mode(Mode.command)
+
