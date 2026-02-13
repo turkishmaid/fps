@@ -54,12 +54,12 @@ class Editor:
     def max_y(self) -> int:
         """Return the maximum y valid for cursor position."""
         return term.height - 2
-    
+
     @property
     def in_last_line(self) -> bool:
         """Return True if the cursor is in the last line of the text area."""
         return self.y == self.max_y
-    
+
     @property
     def has_more_lines(self) -> bool:
         """Return True if there are more lines below the current cursor."""
@@ -189,6 +189,16 @@ class KeyHandlerRegistry:
 
 
 def key_handler(func: Callable[[Editor], None]) -> Callable[[Editor], None]:
-    """Register a function in the key_handler_map with its name in uppercase as key."""
+    """Register a key handler.
+
+    Decorator for functions adhering to naming convention.
+    To register a handler for a specific mode, name the function like {keyname}__{modename},
+    e.g. key_backspace__insert for KEY_BACKSPACE in INSERT mode.
+    For a global handler, just {keyname}, e.g. key_backspace.
+    The key name should be the one that comes from term.inkey().name, e.g. KEY_BACKSPACE,
+    but without the KEY_ prefix and in lowercase.
+    Handlers registered for a specific mode take precedence over global handlers.
+    All handlers must take a single argument of type Editor and return None.
+    """
     KeyHandlerRegistry().register(func)
     return func
