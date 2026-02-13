@@ -26,6 +26,12 @@ def key_ctrl_c(e: Editor) -> None:  # noqa: ARG001
     raise KeyboardInterrupt
 
 
+@key_handler
+def key_escape__insert(e: Editor) -> None:
+    """Escape in insert mode: Switch to command mode."""
+    e.set_mode(Mode.command)
+
+
 #
 #       Cursor keys in all modes
 #
@@ -90,6 +96,7 @@ def key_right(e: Editor) -> None:
 #       Delete forward and backward in INSERT mode
 #
 
+
 @key_handler
 def key_backspace__insert(e: Editor) -> None:
     """Handle backspace key press in INSERT mode."""
@@ -153,6 +160,11 @@ def key_enter__insert(e: Editor) -> None:
     e.set_cursor()
 
 
+#
+#       Delete forward and backward in other modes
+#
+
+
 @key_handler
 def key_backspace(e: Editor) -> None:
     """Backspace is like left when not in insert mode."""
@@ -169,9 +181,3 @@ def key_delete(e: Editor) -> None:
 def key_enter(e: Editor) -> None:
     """Enter is like down when not in insert mode."""
     key_down(e)
-
-
-@key_handler
-def key_escape__insert(e: Editor) -> None:
-    """Escape in insert mode: Switch to command mode."""
-    e.set_mode(Mode.command)
