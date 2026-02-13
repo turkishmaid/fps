@@ -22,14 +22,24 @@ def char__insert(e: Editor, key: Keystroke) -> None:
 
 @key_handler
 def key_ctrl_c(e: Editor) -> None:  # noqa: ARG001
-    """Handle Ctrl+C key press."""
+    """Handle Ctrl+C key press until COMMAND mode is available."""
     raise KeyboardInterrupt
+
+
+#
+#       Cursor keys in all modes
+#
 
 
 @key_handler
 def key_up(e: Editor) -> None:
     """Move the cursor up."""
     if e.y == 0:
+        if e.y_offset > 0:
+            e.y_offset -= 1
+            e.echo_lines_from(0)
+            e.set_cursor()
+            return
         e.beep()  # Can't move up, bell sound
         return
     e.y -= 1
@@ -39,15 +49,20 @@ def key_up(e: Editor) -> None:
 @key_handler
 def key_down(e: Editor) -> None:
     """Move the cursor down."""
-    if e.y >= e.max_y:
-        e.alert(f"y is already {e.y}")  # debug
-        e.beep()  # no scroll yet
+    if e.in_last_line:  # try to scroll
+        if not e.has_more_lines:
+            e.beep()
+            return
+        e.y_offset += 1
+        e.echo_lines_from(0)
+        e.set_cursor()
         return
-    e.y += 1
-    if e.mode == Mode.insert and e.y + e.y_offset == len(e.lines):
-        # extend line buffer
-        e.lines.append("")
-        e.echo_line()
+    if e.has_more_lines:
+        e.y += 1
+        e.set_cursor()
+    else:  # don't add lines implicitly
+        e.beep()
+        e.alert("use RETURN to add lines")
     e.set_cursor()
 
 
@@ -71,9 +86,13 @@ def key_right(e: Editor) -> None:
     e.set_cursor()
 
 
+#
+#       Delete forward and backward in INSERT mode
+#
+
 @key_handler
 def key_backspace__insert(e: Editor) -> None:
-    """Handle backspace key press."""
+    """Handle backspace key press in INSERT mode."""
     if e.x > 0:
         y_index = e.y + e.y_offset
         line = e.lines[y_index]
@@ -82,22 +101,18 @@ def key_backspace__insert(e: Editor) -> None:
         e.x -= 1
         e.echo_line()
         e.set_cursor()
-    else:  # x == 0
-        if e.y == 0:  # no-scrolling yet
-            return
-        if e.y + e.y_offset > 0:  # the real stuff
-            e.y -= 1  # move up
-            y_above = e.y + e.y_offset
-            e.x = len(e.lines[y_above])  # end of line above
-            e.lines[y_above] += e.lines.pop(y_above + 1)
-            e.echo_lines_from(e.y)
-            e.set_cursor()  # position was set before
-
-
-@key_handler
-def key_backspace(e: Editor) -> None:
-    """Backspace is like left when not in insert mode."""
-    key_left(e)
+    elif e.y + e.y_offset > 0:
+        e.y -= 1  # move up
+        y_above = e.y + e.y_offset
+        e.x = len(e.lines[y_above])  # end of line above
+        e.lines[y_above] += e.lines.pop(y_above + 1)
+        if e.y < 0:  # scrolled up beyond visible area before
+            e.y += 1
+            e.y_offset -= 1
+        e.echo_lines_from(e.y)
+        e.set_cursor()  # position was set before
+    else:
+        e.beep()  # Can't backspace, bell sound
 
 
 @key_handler
@@ -110,20 +125,13 @@ def key_delete__insert(e: Editor) -> None:
         e.lines[y_index] = line[: e.x] + line[e.x + 1 :]
         e.echo_line()
         e.set_cursor()
-    else:  # x at end of line
-        if e.y == e.max_y:  # no-scrolling yet
-            return
-        if e.y + e.y_offset < len(e.lines) - 1:
-            # join with next line
-            e.lines[y_index] += e.lines.pop(y_index + 1)
-            e.echo_lines_from(e.y)
-            e.set_cursor()  # just where it is, now in the middle of the joinde line
-
-
-@key_handler
-def key_delete(e: Editor) -> None:
-    """Delete is like right when not in insert mode."""
-    key_right(e)
+    elif e.y + e.y_offset < len(e.lines) - 1:
+        # join with next line
+        e.lines[y_index] += e.lines.pop(y_index + 1)
+        e.echo_lines_from(e.y)
+        e.set_cursor()  # just where it is, now in the middle of the joinde line
+    else:
+        e.beep()  # Can't delete, bell sound
 
 
 @key_handler
@@ -135,10 +143,26 @@ def key_enter__insert(e: Editor) -> None:
     new_line = line[e.x :]
     e.lines[y_index] = line[: e.x]
     e.lines.insert(y_index + 1, new_line)
-    e.y += 1
-    e.x = 0
-    e.echo_lines_from(e.y - 1)
+    if e.in_last_line:  # try to scroll
+        e.y_offset += 1
+        e.echo_lines_from(0)
+    else:
+        e.y += 1
+        e.x = 0
+        e.echo_lines_from(e.y - 1)
     e.set_cursor()
+
+
+@key_handler
+def key_backspace(e: Editor) -> None:
+    """Backspace is like left when not in insert mode."""
+    key_left(e)
+
+
+@key_handler
+def key_delete(e: Editor) -> None:
+    """Delete is like right when not in insert mode."""
+    key_right(e)
 
 
 @key_handler
@@ -151,4 +175,3 @@ def key_enter(e: Editor) -> None:
 def key_escape__insert(e: Editor) -> None:
     """Escape in insert mode: Switch to command mode."""
     e.set_mode(Mode.command)
-

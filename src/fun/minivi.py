@@ -41,7 +41,7 @@ def load() -> LoadResult:
 def vi() -> None:
     """Run main editor loop."""
 
-    KeyHandlerRegistry().show_keybindings()
+    # KeyHandlerRegistry().show_keybindings()
 
     lr = load()
 

@@ -54,6 +54,16 @@ class Editor:
     def max_y(self) -> int:
         """Return the maximum y valid for cursor position."""
         return term.height - 2
+    
+    @property
+    def in_last_line(self) -> bool:
+        """Return True if the cursor is in the last line of the text area."""
+        return self.y == self.max_y
+    
+    @property
+    def has_more_lines(self) -> bool:
+        """Return True if there are more lines below the current cursor."""
+        return self.y + self.y_offset < len(self.lines) - 1
 
     def set_mode(self, mode: Mode) -> None:
         """Set the current mode, and show it bottom left."""
@@ -81,6 +91,13 @@ class Editor:
     def set_cursor(self) -> None:
         """Move the cursor to the current position, cleaning possible alert."""
         self.revoke_alert()  # clear any dirty message before moving the cursor
+        self.echo(
+            term.move_yx(term.height - 1, 40),
+            Config().dim,
+            term.italic,
+            f"{self.y + self.y_offset + 1},{self.x} [{len(self.lines)}] ",
+            term.normal,
+        )
         self._set_cursor()
 
     def _set_cursor(self) -> None:
