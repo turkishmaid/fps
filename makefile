@@ -9,6 +9,7 @@ local:
 
 sync:
 	uv sync
+	uv tool install --editable . --force
 
 clean:
 	rm -rf .venv

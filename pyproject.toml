@@ -8,38 +8,6 @@ requires-python = ">=3.13"
 dependencies = [
     "anita",
     "blessed",
-    # add stöffche here
-    # "airium",
-    # "beautifulsoup4",
-    # "click",
-    # "concurrent-log-handler",
-    # "deprecated",
-    # "docopt-ng",
-    # "flask>=3",
-    # "ipykernel",
-    # "ipywidgets",
-    # "jamesql",
-    # "jsonpath-ng",
-    # "lorem-text",
-    # "matplotlib",
-    # "pandas",
-    # "pprintpp",
-    # "pyexiftool",
-    # "pyfiglet",
-    # "pymongo",
-    # "pyopenssl",
-    # "python-dateutil",
-    # "pytz",
-    # "pyyaml",
-    # "requests",
-    # "responses",
-    # "rich",
-    # "ruff",
-    # "scipy",
-    # "tomlkit",
-    # "tweepy",
-    # "wordcloud",
-    # "yagmail",
 ]
 
 [dependency-groups]
@@ -48,31 +16,6 @@ dev = [
     "pytest",
     "ruff",
 ]
-# tk-gui-group = [
-#     "PySide6",
-#     "Pillow",
-#     "python-vlc"
-# ]
-# tui-group = [
-#     "textual",
-#     "textual-dev",
-#     "textual-image",
-# ]
-# tinydb-group = [
-#     "BetterJSONStorage",
-#     "tinydb",
-#     "orjson",
-# ]
-# # Google APIs, z.B. für das Youtube Data API
-# google-api-group = [
-#     "google-api-python-client",
-#     "google-auth-oauthlib",
-#     "google-auth-httplib2",
-# ]
-
-# [tool.uv]
-# # Hier definierst du, was standardmäßig dabei sein soll
-# default-groups = ["tui-group"]
 
 [tool.uv.sources]
 anita = { path = "../anita", editable = true }
@@ -82,13 +25,23 @@ anita = { path = "../anita", editable = true }
 [tool.pytest.ini_options]
 pythonpath = ["src"]
 
-# [project.scripts]
-# power-duebel = "path.to.script:main"
-
 [build-system]
 requires = ["hatchling"]
 build-backend = "hatchling.build"
 
 [tool.hatch.build.targets.wheel]
-packages = ["src/fun"]
+# hier die Pakete angeben, die in das Wheel aufgenommen werden sollen
+packages = ["src/fun", "src/vilib", "src/tipplib", "src/bin"]
+
+[project.scripts]
+# vi sollte man hier besser (noch) nicht eintragen :)
+tippse = "bin.maschinenschreiben:main"
+pyvian = "bin.like_vi_but:main"
+
+
+[tool.black]
+line-length = 120
+
+[tool.ruff]
+line-length = 120
 

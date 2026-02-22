@@ -38,7 +38,7 @@ def load() -> LoadResult:
     return LoadResult(success=True, message="new file", content=[""])
 
 
-def vi() -> None:
+def mini_vi() -> None:
     """Run main editor loop."""
 
     # KeyHandlerRegistry().show_keybindings()
