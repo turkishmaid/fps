@@ -1,27 +1,18 @@
-from pathlib import Path
-import functools
+"""Pre-process Project Gutenberg Werther for use in Tippse."""
+
 import re
+import textwrap
+
+from tipplib.util import get_reporoot
 
 
-@functools.cache
-def get_reporoot() -> Path:
-    """Get the root of the repository by looking for a .git directory."""
-    here = Path(__file__).resolve().parent
-    original_here = here
-    while True:
-        if (here / ".git").is_dir():
-            return here
-        assert here != here.parent, f".git/ not found from starting point {original_here}"
-        here = here.parent
-
-
+# https://projekt-gutenberg.org/authors/johann-wolfgang-von-goethe/books/die-leiden-des-jungen-werther/chapter/1/
 INFILE = get_reporoot() / "local" / "werther.txt"
 OUTFILE = get_reporoot() / "local" / "werther.md"
 
 
 def main() -> None:
     """Read INFILE, double all single newlines, wrap to 70 chars, and write to OUTFILE."""
-    import textwrap
 
     content = INFILE.read_text(encoding="utf-8")
 
@@ -33,7 +24,7 @@ def main() -> None:
     # ...
     # [^\n] ensures we are not at the start of a multi-newline sequence.
     # (?=[^\n]) ensures we are not at the start of a multi-newline sequence that continues.
-    
+
     pattern = r"([^\n])(\n[ \t\r\f\v]*)(?=[^\n])"
     new_content = re.sub(pattern, r"\1\n\n", content)
 

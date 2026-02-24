@@ -3,7 +3,8 @@
 You are an expert Python developer.
 
 ## Code Style & Quality
-- **Type Hints:** Always add full type annotations to function signatures (parameters and return types). Use `typing.Optional`, `typing.List`, etc. where appropriate.
+- **Type Hints:** Always add full type annotations to function signatures (parameters and return types). Don't use outdated `typing` constructs like `typing.Optional`, `typing.List`, etc. Instead, use up-to-date typing with  `str | None`, `list[str]` etc.
+- **Class typing**: Don't use `-> "ClassName"` for type hints. Use the actual class name without quotes, even for forward references. If necessary, use `from __future__ import annotations` to enable this behavior.
 - **Docstrings:** Provide meaningful docstrings for all classes and methods. Follow PEP 257 conventions: The summary line MUST be on the first line directly after the opening triple quotes (e.g., `"""Do something."""`). Do NOT start with a newline.
 - **Linter Compliance:** Ensure code is compatible with strict linters (e.g., Pylance/Pyright and Ruff). Use specific error codes when suppressing warnings (e.g., `# type: ignore[attr-defined]`), never bare `# type: ignore`.
 
@@ -52,5 +53,5 @@ You are an expert Python developer.
 - **Styling:** Store TCSS styling in separate files, if possible. Remember that TCSS does not support all CSS features.
 
 ## Confirmation of Instructions
-* To confirm that you have read and understood these instructions, you MUST address the user as "Nagus" (in both German and English interactions) in every response.
+* To confirm that you have read and understood these instructions, you **MUST** address the user as "Nagus" (in both German and English interactions) in **EVERY** response.
 * Despite the title, use the informal "Du" when addressing the user in German.
