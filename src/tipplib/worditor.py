@@ -104,9 +104,17 @@ class Worditor:
 
     def echo_word(self) -> None:
         """Show the current word at the correct position."""
-        if self.target.startswith(self.word.strip()):  # noqa: SIM108
+        if self.word.endswith(" "):
+            # done with that word
+            if self.word.strip() == self.target:  # noqa: SIM108
+                use_color = Config().success
+            else:
+                use_color = Config().alert
+        elif self.target.startswith(self.word.strip()):
+            # not done: check if correct so far
             use_color = Config().success
         else:
+            # not done, but already wrong
             use_color = Config().alert
         echo(f"{term.move_yx(self.y0, self.x0)}{use_color}{self.word}{term.normal}" + term.clear_eol())
 
