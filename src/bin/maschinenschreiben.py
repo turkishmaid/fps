@@ -52,4 +52,3 @@ def main() -> None:
 
     with term.fullscreen(), term.raw():
         Trainer()
-

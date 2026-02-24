@@ -180,7 +180,7 @@ class Worditor:
 
     def char(self, key: Keystroke | str) -> None:
         """Insert the character at the current position."""
-        self.alert("k: "+str(key))
+        self.alert("k: " + str(key))
         char_value = str(key)
         if term.length(char_value) > 1:  # avoid emojis and other weird stuff, but not Umlaute
             beep()
@@ -228,4 +228,3 @@ class Worditor:
             self._set_cursor()  # move back to the current position
             self.alert_since = -1.0
             self.alert_length = 0
-
