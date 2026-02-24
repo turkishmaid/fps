@@ -9,6 +9,8 @@ from blessed import Terminal
 if TYPE_CHECKING:
     from collections.abc import Callable
     from typing import Self
+    from blessed.keyboard import Keystroke
+
 
 term = Terminal()
 
@@ -51,10 +53,24 @@ class Config:
 ALERT_X = 20
 
 
+class WorditorResult(NamedTuple):
+    """Result of a Worditor.run() session."""
+
+    # the target word that was supposed to be typed
+    target: str
+    # what was actually typed, without the trailing space
+    typed: str
+    # True if the user typed the target word correctly
+    success: bool
+    # True if the user exited (with Ctrl+C or Escape)
+    # False if they completed the word by typing a space after it
+    leave: bool
+
+
 class Worditor:
     """Hold and manage the state of an editor for one word."""
 
-    def __init__(self, y0: int, x0: int, on_space: Callable, target: str, ty0: int, tx0: int) -> None:  # noqa: PLR0913
+    def __init__(self, y0: int, x0: int, target: str, ty0: int, tx0: int) -> None:  # noqa: PLR0913
         """Initialize the editor state."""
         # initial position, where the word begins
         self.y0: int = y0
@@ -66,11 +82,10 @@ class Worditor:
         self.x: int = x0
 
         # approach: edit each line individually and track edits in the line
-        self.word: str = ""
+        self.current: str = ""
         self.target: str = target
 
         # callback for when space is pressed, to trigger the next word
-        self.on_space: Callable = on_space
 
         # dirty message from last  time must be preserved across resets, so we can still revoke it after the timeout
         if not hasattr(self, "alert_since"):
@@ -83,9 +98,52 @@ class Worditor:
         echo(f"{term.move_yx(y0, x0)}" + term.clear_eol())
         self.set_cursor()
 
-    def reset(self, y0: int, x0: int, on_space: Callable, target: str, ty0: int, tx0: int) -> None:  # noqa: PLR0913
+    def reset(self, y0: int, x0: int, target: str, ty0: int, tx0: int) -> None:  # noqa: PLR0913
         """Reset the editor to a new initial state."""
-        self.__init__(y0, x0, on_space, target, ty0, tx0)
+        self.__init__(y0, x0, target, ty0, tx0)
+
+    def run(self) -> WorditorResult:
+        """Run the main loop for the word editor."""
+        while True:
+            key = term.inkey(timeout=0.35)
+            if key is None or key == "":
+                # alert should disappear after its timeout even if the user doesn't type
+                self.revoke_alert()
+                # TODO manage resizing
+                continue  # No key pressed, continue the loop
+
+            if key.name:
+                if key.name in ("KEY_CTRL_C", "KEY_ESCAPE"):
+                    return WorditorResult(
+                        target=self.target,
+                        typed=self.current.strip(),
+                        success=self.current.strip() == self.target,
+                        leave=True,
+                    )
+
+                if key.name == "KEY_BACKSPACE":
+                    self.backspace()
+                    continue
+
+            if key.is_sequence:
+                self.alert(f"? {key.name}")  # Show the key name as a quick message
+                continue
+
+            if key == " ":
+                if self.current.strip() == "":
+                    beep()
+                    continue
+                self.char(key)
+                self.echo_word()
+                return WorditorResult(
+                    target=self.target,
+                    typed=self.current.strip(),
+                    success=self.current.strip() == self.target,
+                    leave=False,
+                )
+
+            self.char(key)
+            continue
 
     @staticmethod
     def beep() -> None:
@@ -104,19 +162,44 @@ class Worditor:
 
     def echo_word(self) -> None:
         """Show the current word at the correct position."""
-        if self.word.endswith(" "):
+        if self.current.endswith(" "):
             # done with that word
-            if self.word.strip() == self.target:  # noqa: SIM108
+            if self.current.strip() == self.target:  # noqa: SIM108
                 use_color = Config().success
             else:
                 use_color = Config().alert
-        elif self.target.startswith(self.word.strip()):
+            # also echo the target word again, so the user can see what it was in case of an error
+            echo(f"{term.move_yx(self.ty0, self.tx0)}{use_color}{self.target}{term.normal}" + term.clear_eol())
+        elif self.target.startswith(self.current.strip()):
             # not done: check if correct so far
             use_color = Config().success
         else:
             # not done, but already wrong
             use_color = Config().alert
-        echo(f"{term.move_yx(self.y0, self.x0)}{use_color}{self.word}{term.normal}" + term.clear_eol())
+        echo(f"{term.move_yx(self.y0, self.x0)}{use_color}{self.current}{term.normal}" + term.clear_eol())
+
+    def char(self, key: Keystroke | str) -> None:
+        """Insert the character at the current position."""
+        self.alert("k: "+str(key))
+        char_value = str(key)
+        if term.length(char_value) > 1:  # avoid emojis and other weird stuff, but not Umlaute
+            beep()
+            self.alert(f"ignoring {char_value!r} (len={term.length(char_value)})")
+            return
+        self.current = self.current + char_value
+        self.x += 1
+        self.echo_word()
+        self.set_cursor()
+
+    def backspace(self) -> None:
+        """Delete the character before the current position."""
+        if self.x > self.x0:
+            self.current = self.current[:-1]
+            self.x -= 1
+            self.echo_word()
+            self.set_cursor()
+        else:
+            self.beep()  # Can't backspace, bell sound
 
     def set_cursor(self) -> None:
         """Move the cursor to the current position, cleaning possible alert."""
@@ -145,3 +228,4 @@ class Worditor:
             self._set_cursor()  # move back to the current position
             self.alert_since = -1.0
             self.alert_length = 0
+
