@@ -8,13 +8,15 @@ from tipplib import term, Worditor, WorditorResult, Config, TextSource, beep
 class Trainer:
     """Main class for the typing tutor."""
 
-    target_y0 = 10
-    target_x0 = 4
-    text_y0 = 12
-    text_x0 = 4
 
     def __init__(self) -> None:
         """Initialize the trainer."""
+
+        # Vorgabe startet hier
+        self.target_y0, self.target_x0  = 5, 4
+        # Eingetipptes startet hier
+        self.text_y0, self.text_x0 = 12, 4
+
         self.words = [w for w in TextSource().get_line().split() if w]
         self.word_no = 0
         self.next_word()
@@ -27,6 +29,8 @@ class Trainer:
                 break  # Exit on Ctrl+C or Escape
             if self.next_word():
                 self.e.alert("new line!")
+                self.target_y0 += 1
+                self.text_y0 += 1
                 y0, x0, ty0, tx0 = self.text_y0, self.text_x0, self.target_y0, self.target_x0
             else:
                 y0, x0, ty0, tx0 = self.e.y0, self.e.x, self.e.ty0, self.e.tx0 + len(self.e.target) + 1
