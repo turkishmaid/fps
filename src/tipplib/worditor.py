@@ -3,6 +3,7 @@
 from __future__ import annotations
 from time import time
 from typing import TYPE_CHECKING, NamedTuple
+from dataclasses import dataclass, field
 
 from blessed import Terminal
 
@@ -31,7 +32,7 @@ class Config:
 
     _instance = None
 
-    def __new__(cls) -> Self:
+    def __new__(cls) -> Config:
         """Singleton pattern implementation."""
         if cls._instance is None:
             cls._instance = super().__new__(cls)
@@ -53,18 +54,52 @@ class Config:
 ALERT_X = 20
 
 
-class WorditorResult(NamedTuple):
+@dataclass
+class WorditorResult:
     """Result of a Worditor.run() session."""
 
     # the target word that was supposed to be typed
     target: str
     # what was actually typed, without the trailing space
-    typed: str
+    typed: str = ""
     # True if the user typed the target word correctly
-    success: bool
+    success: bool = False
     # True if the user exited (with Ctrl+C or Escape)
     # False if they completed the word by typing a space after it
-    leave: bool
+    leave: bool = False
+    # very precise typing log
+    log: list[tuple[float, str]] = field(default_factory=list)
+
+    def log_key(self, key: Keystroke) -> None:
+        """Log a character with the current timestamp."""
+        if key is None or key == "":
+            return  # No key pressed, don't log
+        char: str = key.name if hasattr(key, "name") and key.name else str(key)
+        if char == " ":
+            char = "SPACE"
+        self.log.append((time(), char))
+
+    def log_done(self, typed: str, success: bool, leave: bool) -> None:
+        """Mark the log as done by adding a final entry with an empty char."""
+        self.typed = typed.strip()
+        self.success = self.typed == self.target
+        self.leave = self.log[-1][1] in ("KEY_CTRL_C", "KEY_ESCAPE")
+        # capture programming errors
+        assert self.success == (self.typed == self.target), "success flag mismatch"
+        assert self.leave == leave, "leave flag mismatch"
+
+    def render(self, time_base: float) -> None:
+        """Render the result as a string for display."""
+        c = Config()
+        dim, bold, bad, good, nn = (c.dim, c.bold, c.alert, c.success, term.normal)
+        target = f"{dim}{self.target}{nn}"
+        bunt = good if self.success else bad
+        typed = f"{bunt}{self.typed}{nn}"
+        left = f"{bad}{bold}LEFT{nn}" if self.leave else ""
+        print(f"{target} {typed} {left}")
+        t0 = time_base
+        mess = "  ".join(f"{dim}{t - t0:.2f}{nn} {c}" for t, c in self.log)
+        print("    ", mess)
 
 
 class Worditor:
@@ -98,6 +133,8 @@ class Worditor:
         echo(f"{term.move_yx(y0, x0)}" + term.clear_eol())
         self.set_cursor()
 
+        self.result = WorditorResult(target=target)
+
     def reset(self, y0: int, x0: int, target: str, ty0: int, tx0: int) -> None:  # noqa: PLR0913
         """Reset the editor to a new initial state."""
         self.__init__(y0, x0, target, ty0, tx0)
@@ -112,14 +149,12 @@ class Worditor:
                 # TODO manage resizing
                 continue  # No key pressed, continue the loop
 
+            self.result.log_key(key)
+
             if key.name:
                 if key.name in ("KEY_CTRL_C", "KEY_ESCAPE"):
-                    return WorditorResult(
-                        target=self.target,
-                        typed=self.current.strip(),
-                        success=self.current.strip() == self.target,
-                        leave=True,
-                    )
+                    self.result.log_done(self.current.strip(), self.current.strip() == self.target, True)
+                    return self.result
 
                 if key.name == "KEY_BACKSPACE":
                     self.backspace()
@@ -135,12 +170,8 @@ class Worditor:
                     continue
                 self.char(key)
                 self.echo_word()
-                return WorditorResult(
-                    target=self.target,
-                    typed=self.current.strip(),
-                    success=self.current.strip() == self.target,
-                    leave=False,
-                )
+                self.result.log_done(self.current.strip(), self.current.strip() == self.target, False)
+                return self.result
 
             self.char(key)
             continue
