@@ -14,3 +14,13 @@ def get_reporoot() -> Path:
             return here
         assert here != here.parent, f".git/ not found from starting point {original_here}"
         here = here.parent
+
+def hr_time(dt: float) -> str:
+    """Compute human readable time. E.g., 1.2s, 4m02s, 1h03m04s."""
+    hours, remainder = divmod(int(dt), 3600)
+    minutes, seconds = divmod(remainder, 60)
+    if hours > 0:
+        return f"{hours}h{minutes:02}m{seconds:02}s"
+    if minutes > 0:
+        return f"{minutes}m{seconds:02}s"
+    return f"{dt:.1f}s"

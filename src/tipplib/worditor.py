@@ -7,6 +7,8 @@ from dataclasses import dataclass, field
 
 from blessed import Terminal
 
+from .util import hr_time
+
 if TYPE_CHECKING:
     from collections.abc import Callable
     from typing import Self
@@ -20,6 +22,13 @@ def echo(*args) -> None:  # noqa: ANN002
     """Print all arguments with no separator and flush the result."""
     output = "".join(str(arg) for arg in args)
     print(output, end="", flush=True)
+
+
+def echo_at(y: int, x: int, *args: str) -> None:
+    """Print all arguments at a specific position with no separator and flush the result."""
+    output = "".join(str(arg) for arg in args)
+    y0, x0 = term.get_location()
+    print(f"{term.move_yx(y, x)}{output}{term.move_yx(y0, x0)}", end="", flush=True)
 
 
 def beep() -> None:
@@ -79,18 +88,15 @@ class WorditorResult:
             char = "SPACE"
         self.log.append((time(), char))
 
-    def log_done(self, typed: str, success: bool, leave: bool) -> None:
+    def log_done(self, typed: str) -> None:
         """Mark the log as done by adding a final entry with an empty char."""
         self.typed = typed.strip()
         self.success = self.typed == self.target
         self.leave = self.log[-1][1] in ("KEY_CTRL_C", "KEY_ESCAPE")
-        # capture programming errors
-        assert self.success == (self.typed == self.target), "success flag mismatch"
-        assert self.leave == leave, "leave flag mismatch"
 
     def render(self, time_base: float) -> None:
         """Render the result as a string for display."""
-        c = Config()
+        c = Config()  # LOLcode incoming
         dim, bold, bad, good, nn = (c.dim, c.bold, c.alert, c.success, term.normal)
         target = f"{dim}{self.target}{nn}"
         bunt = good if self.success else bad
@@ -129,8 +135,8 @@ class Worditor:
             self.alert_timeout: float = 2.0
 
         # show the target word at the beginning
-        echo(f"{term.move_yx(ty0, tx0)}{target}" + term.clear_eol())
-        echo(f"{term.move_yx(y0, x0)}" + term.clear_eol())
+        echo(f"{term.move_yx(ty0, tx0)}{target}")
+        echo(f"{term.move_yx(y0, x0)}")
         self.set_cursor()
 
         self.result = WorditorResult(target=target)
@@ -153,7 +159,7 @@ class Worditor:
 
             if key.name:
                 if key.name in ("KEY_CTRL_C", "KEY_ESCAPE"):
-                    self.result.log_done(self.current.strip(), self.current.strip() == self.target, True)
+                    self.result.log_done(self.current.strip())
                     return self.result
 
                 if key.name == "KEY_BACKSPACE":
@@ -168,9 +174,10 @@ class Worditor:
                 if self.current.strip() == "":
                     beep()
                     continue
+                # TODO was tun. wenn das Wort zu lang wird? Dann kann die ganze Zeile aus dem rechten Rand laufen
                 self.char(key)
                 self.echo_word()
-                self.result.log_done(self.current.strip(), self.current.strip() == self.target, False)
+                self.result.log_done(self.current.strip())
                 return self.result
 
             self.char(key)
@@ -199,15 +206,15 @@ class Worditor:
                 use_color = Config().success
             else:
                 use_color = Config().alert
-            # also echo the target word again, so the user can see what it was in case of an error
-            echo(f"{term.move_yx(self.ty0, self.tx0)}{use_color}{self.target}{term.normal}" + term.clear_eol())
+            # also echo the target word again, this time in proper color
+            echo(f"{term.move_yx(self.ty0, self.tx0)}{use_color}{self.target}{term.normal}")
         elif self.target.startswith(self.current.strip()):
             # not done: check if correct so far
             use_color = Config().success
         else:
             # not done, but already wrong
             use_color = Config().alert
-        echo(f"{term.move_yx(self.y0, self.x0)}{use_color}{self.current}{term.normal}" + term.clear_eol())
+        echo(f"{term.move_yx(self.y0, self.x0)}{use_color}{self.current}{term.normal}")
 
     def char(self, key: Keystroke | str) -> None:
         """Insert the character at the current position."""
@@ -227,6 +234,8 @@ class Worditor:
             self.current = self.current[:-1]
             self.x -= 1
             self.echo_word()
+            # delete the char on screen, else backspaced stuff survives, which is more confusing than funny
+            echo(" ")
             self.set_cursor()
         else:
             self.beep()  # Can't backspace, bell sound
@@ -258,3 +267,71 @@ class Worditor:
             self._set_cursor()  # move back to the current position
             self.alert_since = -1.0
             self.alert_length = 0
+
+
+MONITOR_X = 40
+
+
+class Monitor:
+    """Monitoring the training process."""
+
+    _instance = None
+
+    def __new__(cls) -> Monitor:
+        """Singleton pattern implementation."""
+        if cls._instance is None:
+            cls._instance = super().__new__(cls)
+        return cls._instance
+
+    def __init__(self) -> None:
+        """Initialize the configuration with default values."""
+        if getattr(self, "_initialized", False):
+            return
+        self._initialized = True
+
+        # consider moving these to a separate theme or style class later
+        self.result: list[WorditorResult] = []
+
+    def log_word(self, result: WorditorResult) -> None:
+        """Log a WorditorResult."""
+        self.result.append(result)
+
+    def info(self) -> None:
+        """Display current info at the bottom of the terminal."""
+        num_good = sum(1 for r in self.result if r.success)
+        num_bad = len(self.result) - num_good
+        good = Config().success + str(num_good) + term.normal if num_good > 0 else ""
+        bad = Config().alert + str(num_bad) + term.normal if num_bad > 0 else ""
+        mess = f"{good} {bad}".ljust(10)
+        echo_at(term.height - 1, MONITOR_X, mess)
+
+    def render(self) -> None:
+        """Dump the current log to the terminal (after the typing session)."""
+        if self.result:
+            time_base = self.result[0].log[0][0]
+            for r in self.result:
+                r.render(time_base)
+
+    def rating(self) -> None:
+        """Compute and display a rating based on the logged results."""
+        # may be regular end or user break
+        relevant = [r for r in self.result if not r.leave]
+        assert relevant, "No words typed, cannot compute rating."
+        elapsed_time = relevant[-1].log[-1][0] - relevant[0].log[0][0]
+
+        char_count = sum(len(r.target) for r in relevant)
+        cpm = round(char_count / elapsed_time * 60)
+
+        word_count = len(relevant)
+        num_good = sum(1 for r in relevant if r.success)
+        num_bad = word_count - num_good
+        wpm = round(num_good / elapsed_time * 60)
+
+        # ignore backspaces for the moment
+        accuracy = num_good / len(relevant) * 100 if relevant else 0
+
+        print(
+            f"{wpm} WPM, {cpm} CPM",
+            f"- accuracy {accuracy:.1f}% ({num_good} good, {num_bad} bad)",
+            f"- survived for {hr_time(elapsed_time)}.",
+        )

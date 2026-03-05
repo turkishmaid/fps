@@ -3,79 +3,22 @@
 from __future__ import annotations
 from time import time
 
-from tipplib import term, Worditor, WorditorResult, Config, TextSource, beep, echo
+from tipplib import term, Worditor, Monitor, Config, TextSource, echo
 
 
-INFO_X = 40
 
-
-class Monitor:
-    """Monitoring the Trainer."""
-
-    _instance = None
-
-    def __new__(cls) -> Monitor:
-        """Singleton pattern implementation."""
-        if cls._instance is None:
-            cls._instance = super().__new__(cls)
-        return cls._instance
-
-    def __init__(self) -> None:
-        """Initialize the configuration with default values."""
-        if getattr(self, "_initialized", False):
-            return
-        self._initialized = True
-
-        # consider moving these to a separate theme or style class later
-        self.result: list[WorditorResult] = []
-        self.elapsed_time: float = -1.0
-        self.start_time: float = -1.0
-
-    def start_timer(self) -> None:
-        """Start the timer for the typing session."""
-        if self.start_time < 0:
-            self.start_time = time()
-            self.elapsed_time = -1.0
-
-    def stop_timer(self) -> None:
-        """Stop the timer and calculate elapsed time."""
-        assert self.start_time >= 0, "Timer was not started."
-        self.elapsed_time = time() - self.start_time
-        self.start_time = -1.0
-
-    def log_word(self, result: WorditorResult) -> None:
-        """Log a WorditorResult."""
-        self.result.append(result)
-
-    def info(self) -> None:
-        """Display current info at the bottom of the terminal."""
-        num_good = sum(1 for r in self.result if r.success)
-        num_bad = len(self.result) - num_good
-        y, x = term.get_location()
-        good = Config().success + str(num_good) + term.normal if num_good > 0 else ""
-        bad = Config().alert + str(num_bad) + term.normal if num_bad > 0 else ""
-        mess = f"{good} {bad}".ljust(10)
-        echo(f"{term.move_yx(term.height - 1, INFO_X)}{mess}{term.move_yx(y, x)}")
-
-    def render(self) -> None:
-        """Dump the current log to the terminal (after the typing session)."""
-        if self.result:
-            time_base = self.result[0].log[0][0]
-            for r in self.result:
-                r.render(time_base)
 
 
 class Trainer:
     """Main class for the typing tutor."""
 
-
     def __init__(self) -> None:
         """Initialize the trainer."""
 
         # Vorgabe startet hier
-        self.target_y0, self.target_x0  = 5, 4
+        self.target_y0, self.target_x0 = 4, 5
         # Eingetipptes startet hier
-        self.text_y0, self.text_x0 = 12, 4
+        self.text_y0, self.text_x0 = 12, 5
 
         self.words = [w for w in TextSource().get_line().split() if w]
         self.word_no = 0
@@ -116,13 +59,31 @@ class Trainer:
         """Compute the current target layout for the trainer."""
         h, w = term.width, term.height
         # ???
-        
+
+
+def paint_frame(x0: int, y0: int, width: int, height: int) -> None:
+    """Zeichne einen Rahmen um den angegebenen Bereich im Terminal."""
+    if width < 2 or height < 2:
+        return  # Zu klein für einen Rahmen
+    current_y, current_x = term.get_location()
+    # Rahmen in einem Durchgang zeichnen
+    output = ""
+    output += term.move_yx(y0, x0) + "┌" + "─" * (width - 2) + "┐"
+    for i in range(1, height - 1):
+        output += term.move_yx(y0 + i, x0) + "│"
+        output += term.move_yx(y0 + i, x0 + width - 1) + "│"
+    output += term.move_yx(y0 + height - 1, x0) + "└" + "─" * (width - 2) + "┘"
+    echo(output)
+    # Cursor zurücksetzen
+    echo(term.move_yx(current_y, current_x))
 
 
 def main() -> None:
     """Run the typing tutor."""
 
     with term.fullscreen(), term.raw():
+        paint_frame(3, 3, 74, 7)
         Trainer()
 
-    Monitor().render()
+    # Monitor().render()
+    Monitor().rating()
