@@ -36,6 +36,18 @@ def beep() -> None:
     echo("\a")
 
 
+def shorten(word: str, target: str) -> str:
+    """Shorten the word to fit the target length, keeping trailing space."""
+    assert word.endswith(" ")
+    word = word[:-1]
+    # won't matter whether len() or term.length() b/c we only use single-width chars in the target
+    max_length = len(target)
+    if len(word) <= max_length:
+        return f"{word} "  # word is short enough, just add the space back
+    # shorten the word and add an ellipsis
+    return f"{word[:max_length - 1]}… "
+
+
 class Config:
     """Configuration singleton for the word editor."""
 
@@ -175,6 +187,9 @@ class Worditor:
                     beep()
                     continue
                 # TODO was tun. wenn das Wort zu lang wird? Dann kann die ganze Zeile aus dem rechten Rand laufen
+                #      -> 🔳 bis zum Ende der Zeile erlauben, dann mit Beep stoppen.
+                #         ✅ bei Wortwechsel mit Space Überlängen mit Ellipsis wegkürzen: sonderbahr -> sonderba…
+                #         term.length("…") == 1 und die Tastenfolge steht ja weiterhin im Monitor-Log für Analysen.
                 self.char(key)
                 self.echo_word()
                 self.result.log_done(self.current.strip())
@@ -200,6 +215,7 @@ class Worditor:
 
     def echo_word(self) -> None:
         """Show the current word at the correct position."""
+        display = self.current
         if self.current.endswith(" "):
             # done with that word
             if self.current.strip() == self.target:  # noqa: SIM108
@@ -208,13 +224,19 @@ class Worditor:
                 use_color = Config().alert
             # also echo the target word again, this time in proper color
             echo(f"{term.move_yx(self.ty0, self.tx0)}{use_color}{self.target}{term.normal}")
+            if len(display) > len(self.target) + 1:
+                # cut overlength when done to avoid overflow
+                display = shorten(self.current, self.target)
+                self.x = self.x0 + term.length(display)
+                # add enough spaces to clear the rest of the word if it was too long before
+                display += " " * (term.length(self.current) - term.length(display))
         elif self.target.startswith(self.current.strip()):
             # not done: check if correct so far
             use_color = Config().success
         else:
             # not done, but already wrong
             use_color = Config().alert
-        echo(f"{term.move_yx(self.y0, self.x0)}{use_color}{self.current}{term.normal}")
+        echo(f"{term.move_yx(self.y0, self.x0)}{use_color}{display}{term.normal}")
 
     def char(self, key: Keystroke | str) -> None:
         """Insert the character at the current position."""

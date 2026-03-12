@@ -94,3 +94,32 @@ class TestTextSource(unittest.TestCase):
         self.assertEqual(ts.get_next_line(), "B")
         self.assertEqual(ts.get_next_line(), "C")
         self.assertEqual(ts.get_next_line(), "A")  # Wraps around
+
+
+class TestWorditor(unittest.TestCase):
+    """Test functionality in tipplib.worditor."""
+
+    def test_shorten(self) -> None:
+        """Test the shorten function from tipplib.worditor."""
+        from tipplib.worditor import shorten
+
+        # Word is shorter than target length
+        self.assertEqual(shorten("hello ", "world!"), "hello ")
+        
+        # Word is exactly the target length
+        self.assertEqual(shorten("hello ", "world"), "hello ")
+        
+        # Word is longer than target length
+        # Note: 'he… ' has length 4, while 'wor' has length 3, wait.
+        # target = 'wor' (length 3). word = 'hello '
+        # word[:-1] = 'hello' (length 5)
+        # max_length = 3
+        # return word[:2] + '… ' -> 'he… '
+        self.assertEqual(shorten("hello ", "wor"), "he… ")
+        
+        # Another long word test
+        self.assertEqual(shorten("amazing ", "test"), "ama… ")
+        
+        # Assert exception if word does not end with a space
+        with self.assertRaises(AssertionError):
+            shorten("hello", "world")
