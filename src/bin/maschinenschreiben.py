@@ -6,19 +6,17 @@ from time import time
 from tipplib import term, Worditor, Monitor, Config, TextSource, echo
 
 
-
-
-
 class Trainer:
     """Main class for the typing tutor."""
 
     def __init__(self) -> None:
         """Initialize the trainer."""
 
+        c = Config()
         # Vorgabe startet hier
-        self.target_y0, self.target_x0 = 4, 5
+        self.target_y0, self.target_x0 = c.target_y0, c.target_x0
         # Eingetipptes startet hier
-        self.text_y0, self.text_x0 = 12, 5
+        self.text_y0, self.text_x0 = c.text_y0, c.text_x0
 
         self.words = [w for w in TextSource().get_line().split() if w]
         self.word_no = 0
@@ -82,7 +80,8 @@ def main() -> None:
     """Run the typing tutor."""
 
     with term.fullscreen(), term.raw():
-        paint_frame(3, 3, 74, 7)
+        c = Config()
+        paint_frame(c.target_x0 - 2, c.target_y0 - 1, c.target_width + 4, c.target_height + 2)  # x,y terminology m(
         Trainer()
 
     # Monitor().render()

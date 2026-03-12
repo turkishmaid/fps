@@ -4,6 +4,7 @@ from __future__ import annotations
 from time import time
 from typing import TYPE_CHECKING, NamedTuple
 from dataclasses import dataclass, field
+from functools import cached_property
 
 from blessed import Terminal
 
@@ -45,7 +46,7 @@ def shorten(word: str, target: str) -> str:
     if len(word) <= max_length:
         return f"{word} "  # word is short enough, just add the space back
     # shorten the word and add an ellipsis
-    return f"{word[:max_length - 1]}… "
+    return f"{word[: max_length - 1]}… "
 
 
 class Config:
@@ -70,6 +71,19 @@ class Config:
         self.bold = term.bright_cyan
         self.alert = term.color_hex("#880000")
         self.success = term.color_hex("#008800")
+
+        # Vorgabe startet hier
+        # Frame hat in x-Richtung padding=1, das ist hier nicht eingepreist
+        self.target_y0, self.target_x0 = 4, 5
+        self.target_height = 5  # netto Höhe
+        self.target_width = 70  # netto Breite
+        # Eingetipptes startet hier
+        self.text_y0, self.text_x0 = 12, self.target_x0
+
+    @property
+    def max_x(self) -> int:
+        """Return the maximum x valid for cursor position."""
+        return self.target_x0 + self.target_width
 
 
 ALERT_X = 20
@@ -186,14 +200,15 @@ class Worditor:
                 if self.current.strip() == "":
                     beep()
                     continue
-                # TODO was tun. wenn das Wort zu lang wird? Dann kann die ganze Zeile aus dem rechten Rand laufen
-                #      -> 🔳 bis zum Ende der Zeile erlauben, dann mit Beep stoppen.
-                #         ✅ bei Wortwechsel mit Space Überlängen mit Ellipsis wegkürzen: sonderbahr -> sonderba…
-                #         term.length("…") == 1 und die Tastenfolge steht ja weiterhin im Monitor-Log für Analysen.
                 self.char(key)
                 self.echo_word()
                 self.result.log_done(self.current.strip())
                 return self.result
+
+            # nicht über den rechten Rand schreiben
+            if self.x >= self.max_x:
+                beep()
+                continue
 
             self.char(key)
             continue
@@ -203,10 +218,10 @@ class Worditor:
         """Make a beep sound."""
         echo("\a")
 
-    @property
+    @cached_property
     def max_x(self) -> int:
         """Return the maximum x valid for cursor position."""
-        return term.width - 2
+        return Config().max_x
 
     @property
     def in_last_col(self) -> bool:
@@ -216,26 +231,30 @@ class Worditor:
     def echo_word(self) -> None:
         """Show the current word at the correct position."""
         display = self.current
+
+        # done with that word?
         if self.current.endswith(" "):
-            # done with that word
             if self.current.strip() == self.target:  # noqa: SIM108
                 use_color = Config().success
             else:
                 use_color = Config().alert
             # also echo the target word again, this time in proper color
             echo(f"{term.move_yx(self.ty0, self.tx0)}{use_color}{self.target}{term.normal}")
+
+            # cut overlength when done to avoid overflow
             if len(display) > len(self.target) + 1:
-                # cut overlength when done to avoid overflow
                 display = shorten(self.current, self.target)
                 self.x = self.x0 + term.length(display)
                 # add enough spaces to clear the rest of the word if it was too long before
-                display += " " * (term.length(self.current) - term.length(display))
+                display += " " * (term.length(self.current) - term.length(display) - 1)
+
         elif self.target.startswith(self.current.strip()):
             # not done: check if correct so far
             use_color = Config().success
         else:
             # not done, but already wrong
             use_color = Config().alert
+
         echo(f"{term.move_yx(self.y0, self.x0)}{use_color}{display}{term.normal}")
 
     def char(self, key: Keystroke | str) -> None:
