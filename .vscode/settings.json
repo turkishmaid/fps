@@ -25,7 +25,7 @@
     //     ├── repo-root/   (this repo)
     //     └── anita/       (dependency repo)
     "python.analysis.extraPaths": [
-        "../anita",
+        // "../anita",
         "${workspaceFolder}"
     ],
     "[json]": {

@@ -4,9 +4,9 @@ name = "fps"
 version = "0.0.1"  # zerover
 description = "ein Versuch zur Framerate im Terminal"
 readme = "README.md"
-requires-python = ">=3.13"
+requires-python = ">=3.14"
 dependencies = [
-    "anita",
+    # "anita",
     "blessed",
 ]
 
@@ -18,7 +18,7 @@ dev = [
 ]
 
 [tool.uv.sources]
-anita = { path = "../anita", editable = true }
+# anita = { path = "../anita" }
 # netscape-bookmarks-file-parser = { git = "https://github.com/FlyingWolFox/Netscape-Bookmarks-File-Parser.git" }
 # ttkbootstrap = { git = "https://github.com/israel-dryer/ttkbootstrap.git" }
 
